@@ -1,10 +1,6 @@
 name: Grouped random and spatial OOF
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - '.github/workflows/oof-pooling.yml'
-      - 'scripts/07_oof_pooling.R'
 permissions:
   contents: read
 jobs:
