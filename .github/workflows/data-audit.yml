@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'scripts/01_audit.R'
+      - 'scripts/02_eda.R'
       - '.github/workflows/data-audit.yml'
 permissions:
   contents: read
@@ -22,6 +23,14 @@ jobs:
           git -C /tmp/disdat checkout 71b878e85ea02764386cfcdbff97816a8f18a8df
           R CMD INSTALL /tmp/disdat
       - run: Rscript scripts/01_audit.R
+      - name: Print inventory summary
+        run: cat results/audit/region_counts.csv
+      - run: Rscript scripts/02_eda.R
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m03-eda
+          path: results/eda/
       - uses: actions/upload-artifact@v4
         if: always()
         with:
