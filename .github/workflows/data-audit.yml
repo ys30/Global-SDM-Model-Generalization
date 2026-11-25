@@ -5,6 +5,7 @@ on:
     paths:
       - 'scripts/01_audit.R'
       - 'scripts/02_eda.R'
+      - 'scripts/03_glm_pilot.R'
       - '.github/workflows/data-audit.yml'
 permissions:
   contents: read
@@ -26,6 +27,12 @@ jobs:
       - name: Print inventory summary
         run: cat results/audit/region_counts.csv
       - run: Rscript scripts/02_eda.R
+      - run: Rscript scripts/03_glm_pilot.R
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: glm-pilot
+          path: results/pilot/
       - uses: actions/upload-artifact@v4
         if: always()
         with:
