@@ -1,0 +1,32 @@
+name: Buffer ridge path revalidation
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/buffer-path.yml'
+      - 'scripts/29_buffer_path.R'
+permissions:
+  contents: read
+jobs:
+  pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.5.2'
+      - name: Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libudunits2-dev libgdal-dev libgeos-dev libproj-dev
+          git clone https://github.com/rspatial/disdat.git /tmp/disdat
+          git -C /tmp/disdat checkout 71b878e85ea02764386cfcdbff97816a8f18a8df
+          R CMD INSTALL /tmp/disdat
+          Rscript -e 'install.packages(c("sf","xgboost","glmnet","RANN"))'
+      - run: Rscript scripts/29_buffer_path.R
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: buffer-path
+          path: results/buffer_path/
