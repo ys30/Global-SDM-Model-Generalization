@@ -1,0 +1,29 @@
+name: Leave-region-out model selection
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/26_region_selection.R'
+      - '.github/workflows/region-selection.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  summarize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.5.2'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: corrected-shard-*
+          path: inputs
+          run-id: 45854228239
+          github-token: ${{ github.token }}
+      - run: Rscript scripts/26_region_selection.R
+      - uses: actions/upload-artifact@v4
+        with:
+          name: region-selection
+          path: results/selection/
