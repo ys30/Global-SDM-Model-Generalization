@@ -1,0 +1,39 @@
+name: Full nested spatial tuning
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/nested-full.yml'
+      - 'scripts/17_nested_full.R'
+permissions:
+  contents: read
+jobs:
+  pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        region: [AWT, CAN, NSW, NZ, SA, SWI]
+    env:
+      TARGET_REGION: ${{ matrix.region }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.5.2'
+      - name: Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libudunits2-dev libgdal-dev libgeos-dev libproj-dev
+          git clone https://github.com/rspatial/disdat.git /tmp/disdat
+          git -C /tmp/disdat checkout 71b878e85ea02764386cfcdbff97816a8f18a8df
+          R CMD INSTALL /tmp/disdat
+          Rscript -e 'install.packages(c("sf","xgboost","glmnet"))'
+      - run: Rscript scripts/17_nested_full.R
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nested-full-${{ matrix.region }}
+          path: results/nested_full/
