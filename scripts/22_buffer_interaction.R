@@ -1,0 +1,24 @@
+# Direct paired contrasts of buffer sensitivity, rather than comparing separate intervals.
+dir.create("results/interaction",recursive=TRUE,showWarnings=FALSE)
+set.seed(20261126)
+a<-read.csv("inputs/species.csv")
+keys<-c("region","group","species")
+stopifnot(!anyDuplicated(a[c(keys,"model")]))
+b<-reshape(a[c(keys,"model","delta_size","delta_spatial","delta_total")],idvar=keys,timevar="model",direction="wide")
+stopifnot(nrow(b)==193)
+out<-list();details<-list()
+pairs<-list(c("ridge_linear","linear"),c("ridge_quadratic","quadratic"),c("quadratic","linear"),c("xgb_shallow","linear"))
+for(pair in pairs)for(metric in c("delta_size","delta_spatial","delta_total")){
+ v<-b[[paste(metric,pair[1],sep=".")]]-b[[paste(metric,pair[2],sep=".")]]
+ stopifnot(length(v)==nrow(b),all(is.finite(v)))
+ label<-paste(pair[1],"minus",pair[2],metric,sep="_")
+ z<-split(v,b$region);stopifnot(length(z)==6)
+ est<-vapply(z,mean,0.0)
+ boots<-sapply(z,function(x)replicate(4000,mean(sample(x,length(x),replace=TRUE))))
+ ci<-quantile(rowMeans(boots),c(.025,.975))
+ out[[length(out)+1]]<-data.frame(contrast=label,n=length(v),mean=mean(est),lower=ci[1],upper=ci[2],loo_min=min(vapply(names(est),function(r)mean(est[names(est)!=r]),0.0)),loo_max=max(vapply(names(est),function(r)mean(est[names(est)!=r]),0.0)))
+ details[[length(details)+1]]<-data.frame(b[keys],contrast=label,delta=v)
+}
+s<-do.call(rbind,out);print(s,row.names=FALSE)
+write.csv(s,"results/interaction/summary.csv",row.names=FALSE)
+write.csv(do.call(rbind,details),"results/interaction/species.csv",row.names=FALSE)
