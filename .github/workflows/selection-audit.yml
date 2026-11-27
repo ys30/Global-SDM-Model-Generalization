@@ -1,0 +1,35 @@
+name: Selection baseline audit
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/36_selection_audit.R'
+      - '.github/workflows/selection-audit.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  summarize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.5.2'
+      - uses: actions/download-artifact@v4
+        with:
+          name: selection-revised
+          path: inputs/select
+          run-id: 45949696737
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: pa-revised
+          path: inputs/pa
+          run-id: 45932827620
+          github-token: ${{ github.token }}
+      - run: Rscript scripts/36_selection_audit.R
+      - uses: actions/upload-artifact@v4
+        with:
+          name: selection-audit
+          path: results/selection_audit/
