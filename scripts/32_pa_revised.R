@@ -1,0 +1,37 @@
+# Reconstruct the six-model matched PA benchmark from audited ridge replay.
+dir.create("results/pa_revised",recursive=TRUE,showWarnings=FALSE)
+regions<-c("AWT","CAN","NSW","NZ","SA","SWI")
+keys<-c("region","group","species","fold","model")
+all<-list()
+for(r in regions){
+ a<-read.csv(file.path("inputs/pa",paste0("corrected-shard-",r),"glm_fold_metrics.csv"))
+ b<-read.csv(file.path("inputs/replay",paste0("pa-ridge-replay-",r),"paired_replay.csv"))
+ stopifnot(all(a$region==r),all(b$region==r))
+ b$model<-paste0("ridge_",b$spec)
+ stopifnot(!anyDuplicated(a[keys]),!anyDuplicated(b[keys]))
+ j<-merge(a,b[c(keys,"auc.path_default","auc.single_original","replay_error")],by=keys,all.x=TRUE,sort=FALSE)
+ isridge<-startsWith(j$model,"ridge_")
+ stopifnot(all(abs(j$replay_error[isridge&is.finite(j$replay_error)])<1e-10))
+ j$auc_old<-j$auc
+ j$auc[isridge]<-j$auc.path_default[isridge]
+ all[[r]]<-j
+}
+a<-do.call(rbind,all);models<-c("linear","quadratic","ridge_linear","ridge_quadratic","xgb_shallow","gam_low")
+cols<-paste0("auc.",models)
+b<-reshape(a[c(keys,"auc")],idvar=keys[1:4],timevar="model",direction="wide")
+b<-b[complete.cases(b[cols]),];stopifnot(nrow(b)>0)
+sp<-aggregate(b[cols],b[keys[1:3]],mean)
+rr<-aggregate(sp[cols],sp["region"],mean)
+print(rr);print(colMeans(rr[cols]));print(table(sp$region))
+write.csv(a,"results/pa_revised/fold_metrics.csv",row.names=FALSE)
+write.csv(b,"results/pa_revised/matched.csv",row.names=FALSE)
+write.csv(sp,"results/pa_revised/species_macro.csv",row.names=FALSE)
+write.csv(rr,"results/pa_revised/region.csv",row.names=FALSE)
+set.seed(20261126)
+ci<-do.call(rbind,lapply(models[-1],function(m){
+ v<-sp[[paste0("auc.",m)]]-sp$auc.linear;z<-split(v,sp$region)
+ bs<-sapply(z,function(x)replicate(4000,mean(sample(x,length(x),replace=TRUE))))
+ q<-quantile(rowMeans(bs),c(.025,.975))
+ data.frame(model=m,n=length(v),mean=mean(vapply(z,mean,0.0)),lower=q[1],upper=q[2])
+}))
+print(ci);write.csv(ci,"results/pa_revised/bootstrap.csv",row.names=FALSE)
