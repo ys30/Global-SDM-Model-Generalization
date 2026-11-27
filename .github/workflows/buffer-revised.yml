@@ -1,0 +1,29 @@
+name: Revised buffer interaction
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/31_buffer_revised.R'
+      - '.github/workflows/buffer-revised.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  summarize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.5.2'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: buffer-recovery-*
+          path: inputs
+          run-id: 45907267803
+          github-token: ${{ github.token }}
+      - run: Rscript scripts/31_buffer_revised.R
+      - uses: actions/upload-artifact@v4
+        with:
+          name: buffer-revised
+          path: results/interaction_revised/
