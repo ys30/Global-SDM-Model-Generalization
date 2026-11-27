@@ -1,0 +1,25 @@
+# Compare the existing selector with a fixed ridge baseline on identical folds.
+dir.create("results/selection_audit",recursive=TRUE,showWarnings=FALSE)
+d<-read.csv("inputs/select/fold_predictions.csv")
+b<-read.csv("inputs/pa/matched.csv")
+keys<-c("region","group","species","fold")
+stopifnot(!anyDuplicated(d[keys]),!anyDuplicated(b[keys]))
+j<-merge(d,b[c(keys,"auc.ridge_linear","auc.ridge_quadratic")],by=keys)
+stopifnot(nrow(j)==nrow(d),all(complete.cases(j)))
+j$gain_ridge_l<-j$auc_selected-j$auc.ridge_linear
+j$gain_ridge_q<-j$auc_selected-j$auc.ridge_quadratic
+metrics<-c("gain_ridge_l","gain_ridge_q","gain_linear","gain_global","regret")
+sp<-aggregate(j[metrics],j[keys[1:3]],mean)
+rr<-aggregate(sp[metrics],sp["region"],mean)
+set.seed(20261127)
+ci<-do.call(rbind,lapply(metrics,function(m){
+ z<-split(sp[[m]],sp$region);bs<-sapply(z,function(x)replicate(4000,mean(sample(x,length(x),replace=TRUE))))
+ v<-vapply(z,mean,0.0);q<-quantile(rowMeans(bs),c(.025,.975))
+ loo<-sapply(names(v),function(r)mean(v[names(v)!=r]))
+ data.frame(contrast=m,n=nrow(sp),mean=mean(v),lower=q[1],upper=q[2],loo_min=min(loo),loo_max=max(loo),region_wins=sum(v>0),species_wins=sum(sp[[m]]>0))
+}))
+print(rr);print(ci)
+write.csv(j,"results/selection_audit/folds.csv",row.names=FALSE)
+write.csv(sp,"results/selection_audit/species.csv",row.names=FALSE)
+write.csv(rr,"results/selection_audit/region.csv",row.names=FALSE)
+write.csv(ci,"results/selection_audit/intervals.csv",row.names=FALSE)
