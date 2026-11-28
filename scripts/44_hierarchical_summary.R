@@ -1,0 +1,41 @@
+# Paired hierarchical pilot inference and convergence audit.
+dir.create("results/hierarchical_summary",recursive=TRUE,showWarnings=FALSE)
+regions<-c("AWT","NSW","SA")
+read_all<-function(f)do.call(rbind,lapply(regions,function(r){d<-read.csv(file.path("inputs",paste0("hierarchical-slopes-",r),f));stopifnot(all(d$region==r));d}))
+a<-read_all("metrics.csv");audit<-read_all("fit_audit.csv")
+keys<-c("region","group","species","fold","spec")
+stopifnot(!anyDuplicated(a[c(keys,"model")]))
+models<-c("independent_glm","independent_ridge","hierarchical_intercept","hierarchical_pc_slopes")
+ac<-paste0("auc.",models)
+b<-reshape(a[c(keys,"model","auc")],idvar=keys,timevar="model",direction="wide")
+stopifnot(all(ac%in%names(b)))
+b<-b[complete.cases(b[ac]),]
+sp<-aggregate(b[ac],b[keys[1:3]],mean)
+stopifnot(nrow(sp)==112,nrow(b)==457)
+rr<-aggregate(sp[ac],sp["region"],mean)
+print(rr);print(table(sp$region));print(with(audit,table(region,spec,singular,useNA="ifany")))
+print(with(audit,table(region,spec,opt_code,useNA="ifany")))
+set.seed(20261128)
+pairs<-list(c("hierarchical_pc_slopes","hierarchical_intercept"),c("hierarchical_pc_slopes","independent_ridge"),c("hierarchical_pc_slopes","independent_glm"),c("independent_ridge","independent_glm"))
+ci<-do.call(rbind,lapply(pairs,function(p){
+ v<-sp[[paste0("auc.",p[1])]]-sp[[paste0("auc.",p[2])]]
+ z<-split(v,sp$region);m<-vapply(z,mean,0.0)
+ bs<-sapply(z,function(x)replicate(4000,mean(sample(x,length(x),replace=TRUE))))
+ q<-quantile(rowMeans(bs),c(.025,.975))
+ loo<-sapply(names(m),function(r)mean(m[names(m)!=r]))
+ data.frame(contrast=paste(p,collapse="_minus_"),n=length(v),mean=mean(m),lower=q[1],upper=q[2],loo_min=min(loo),loo_max=max(loo))
+}))
+print(ci)
+# Sensitivity excludes singular random-slope fits, not the main benchmark.
+ok<-audit[audit$spec=="linear_random_pc" & !is.na(audit$singular) & !audit$singular,c("region","group","fold")]
+stopifnot(!anyDuplicated(ok))
+sens<-merge(b,ok,by=c("region","group","fold"))
+if(nrow(sens)){
+ ss<-aggregate(sens[ac],sens[keys[1:3]],mean)
+ print(aggregate(ss[ac],ss["region"],mean));print(table(ss$region))
+ write.csv(ss,"results/hierarchical_summary/nonsingular_species.csv",row.names=FALSE)
+}
+write.csv(audit,"results/hierarchical_summary/fit_audit.csv",row.names=FALSE)
+write.csv(sp,"results/hierarchical_summary/species.csv",row.names=FALSE)
+write.csv(rr,"results/hierarchical_summary/region.csv",row.names=FALSE)
+write.csv(ci,"results/hierarchical_summary/contrasts.csv",row.names=FALSE)
