@@ -1,0 +1,29 @@
+name: Novelty mechanism uncertainty
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/49_mechanism_uncertainty.R'
+      - '.github/workflows/mechanism-uncertainty.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  summarize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.5.2'
+      - uses: actions/download-artifact@v4
+        with:
+          name: novelty-mechanism
+          path: inputs
+          run-id: 46179109820
+          github-token: ${{ github.token }}
+      - run: Rscript scripts/49_mechanism_uncertainty.R
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mechanism-uncertainty
+          path: results/mechanism_uncertainty/
