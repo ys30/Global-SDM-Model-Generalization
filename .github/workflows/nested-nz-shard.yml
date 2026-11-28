@@ -1,0 +1,40 @@
+name: Nested NZ taxon shards
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/nested-nz-shard.yml'
+permissions:
+  contents: read
+jobs:
+  pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        region: [NZ]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+    env:
+      TARGET_REGION: ${{ matrix.region }}
+      SHARD: ${{ matrix.shard }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.5.2'
+      - name: Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libudunits2-dev libgdal-dev libgeos-dev libproj-dev
+          git clone https://github.com/rspatial/disdat.git /tmp/disdat
+          git -C /tmp/disdat checkout 71b878e85ea02764386cfcdbff97816a8f18a8df
+          R CMD INSTALL /tmp/disdat
+          Rscript -e 'install.packages(c("sf","xgboost","glmnet"))'
+      - run: Rscript scripts/38_nested_nz_shard.R
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nested-nz-shard-${{ matrix.shard }}
+          path: results/nested_nz_shard/
