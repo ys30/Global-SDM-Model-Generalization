@@ -1,0 +1,39 @@
+name: Hierarchical random slopes pilot
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/hierarchical-slopes.yml'
+      - 'scripts/43_hierarchical_slopes.R'
+permissions:
+  contents: read
+jobs:
+  pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        region: [AWT, NSW, SA]
+    env:
+      TARGET_REGION: ${{ matrix.region }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.5.2'
+      - name: Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libudunits2-dev libgdal-dev libgeos-dev libproj-dev
+          git clone https://github.com/rspatial/disdat.git /tmp/disdat
+          git -C /tmp/disdat checkout 71b878e85ea02764386cfcdbff97816a8f18a8df
+          R CMD INSTALL /tmp/disdat
+          Rscript -e 'install.packages(c("sf","lme4","glmnet"))'
+      - run: Rscript scripts/43_hierarchical_slopes.R
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hierarchical-slopes-${{ matrix.region }}
+          path: results/hierarchical_slopes/
