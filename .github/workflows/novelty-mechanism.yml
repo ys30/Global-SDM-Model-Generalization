@@ -1,0 +1,35 @@
+name: Novelty mechanism regression
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/48_novelty_mechanism.R'
+      - '.github/workflows/novelty-mechanism.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  summarize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.5.2'
+      - uses: actions/download-artifact@v4
+        with:
+          name: pa-revised
+          path: inputs/pa
+          run-id: 45932827620
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: novelty-*
+          path: inputs/novelty
+          run-id: 46173862299
+          github-token: ${{ github.token }}
+      - run: Rscript scripts/48_novelty_mechanism.R
+      - uses: actions/upload-artifact@v4
+        with:
+          name: novelty-mechanism
+          path: results/novelty_mechanism/
