@@ -1,0 +1,29 @@
+name: Novelty selection paired summary
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/47_novelty_summary.R'
+      - '.github/workflows/novelty-summary.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  summarize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.5.2'
+      - uses: actions/download-artifact@v4
+        with:
+          name: selection-novelty
+          path: inputs
+          run-id: 46175659354
+          github-token: ${{ github.token }}
+      - run: Rscript scripts/47_novelty_summary.R
+      - uses: actions/upload-artifact@v4
+        with:
+          name: novelty-summary
+          path: results/novelty_summary/
