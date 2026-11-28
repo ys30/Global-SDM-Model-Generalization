@@ -1,0 +1,47 @@
+name: Revised nested final summary
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Nested NZ taxon shards"]
+    types: [completed]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  summarize:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.5.2'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: nested-path-*
+          path: inputs/main
+          run-id: 45892168718
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: nested-can-recovery-CAN
+          path: inputs/can
+          run-id: 45907283070
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: nested-nz-shard-*
+          path: inputs/nz
+          run-id: ${{ github.event.workflow_run.id || '46109574029' }}
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: nested-combined
+          path: inputs/old
+          run-id: 45854203614
+          github-token: ${{ github.token }}
+      - run: Rscript scripts/40_nested_revised.R
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nested-revised
+          path: results/nested_revised/
